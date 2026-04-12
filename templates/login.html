@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AI MedAssistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h2>⚕️ Welcome Back</h2>
+        <p style="color: var(--text-light); margin-bottom: 20px;">Securely login to your medical dashboard</p>
+        
+        <form method="POST">
+            <input name="username" placeholder="Username" required autocomplete="off">
+            <input type="password" name="password" placeholder="Password" required>
+            <button class="btn-main" style="margin-top: 15px;">Login securely 🔒</button>
+        </form>
+        
+        <a href="/register" class="auth-links">New patient? <strong>Register here</strong></a>
+    </div>
+</div>
+
+</body>
+</html>

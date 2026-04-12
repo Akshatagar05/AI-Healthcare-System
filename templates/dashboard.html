@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical History</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+<div class="dash-container">
+    <div class="dash-header">
+        <h2 style="color: var(--primary-dark);">📜 Your Medical History</h2>
+        <a href="/" class="btn-main" style="text-decoration:none; width:auto; display:inline-block;">⬅ Back to Chat</a>
+    </div>
+
+    {% for msg, res, time in data %}
+    <div class="history-card">
+        <div class="history-time">🕒 {{ time }}</div>
+        <div class="history-user">🗣️ Symptoms: {{ msg }}</div>
+        <div class="history-bot markdown-content" data-md="{{ res | e }}">
+            </div>
+    </div>
+    {% endfor %}
+
+    {% if not data %}
+    <div class="history-card" style="text-align: center; color: var(--text-light);">
+        No history found. Start chatting to build your medical record!
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Parse markdown for all history cards on load
+    document.querySelectorAll('.markdown-content').forEach(el => {
+        let rawText = el.getAttribute('data-md');
+        el.innerHTML = marked.parse(rawText);
+    });
+</script>
+
+</body>
+</html>

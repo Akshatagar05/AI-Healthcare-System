@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Medical Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>⚕️ AI MedAssistant</h2>
+        <div>
+            <a href="/dashboard">📜 History</a>
+            <a href="/logout">🚪 Logout</a>
+        </div>
+    </div>
+
+    <div id="chatBox" class="chat-box">
+        <div class="msg-bubble bot">
+            👋 Hello <strong>{{ username }}</strong>! I am your AI Medical Assistant. Please describe your symptoms, or use the quick buttons below.
+        </div>
+    </div>
+
+    <div class="input-area">
+        <div class="fab-container">
+            <button class="fab-btn" onclick="quickFill('🤒 Fever and chills')">🤒 Fever</button>
+            <button class="fab-btn" onclick="quickFill('🤕 Severe headache and light sensitivity')">🤕 Headache</button>
+            <button class="fab-btn" onclick="quickFill('🤢 Nausea and upset stomach')">🤢 Nausea</button>
+            <button class="fab-btn" onclick="quickFill('🤧 Runny nose and sneezing')">🤧 Allergies</button>
+        </div>
+        
+        <div class="input-wrapper">
+            <input id="msg" placeholder="Type your symptoms here..." onkeypress="handleEnter(event)">
+            <button onclick="send()">Send 🚀</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function quickFill(text) {
+        document.getElementById("msg").value = text;
+        document.getElementById("msg").focus();
+    }
+
+    function handleEnter(e) {
+        if (e.key === 'Enter') {
+            send();
+        }
+    }
+
+    function send() {
+        let msgInput = document.getElementById("msg");
+        let msg = msgInput.value.trim();
+        if (!msg) return;
+
+        let box = document.getElementById("chatBox");
+
+        // Add user message
+        box.innerHTML += `<div class="msg-bubble user">${msg}</div>`;
+        
+        // Add loading indicator
+        let loadingId = 'loading-' + Date.now();
+        box.innerHTML += `<div id="${loadingId}" class="msg-bubble bot"><em>Thinking... 🩺</em></div>`;
+        box.scrollTop = box.scrollHeight; // Scroll to bottom
+
+        fetch("/chat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({message: msg})
+        })
+        .then(r => r.json())
+        .then(d => {
+            // Remove loading indicator
+            document.getElementById(loadingId).remove();
+
+            // Create bot response with Markdown parsed
+            let botDiv = document.createElement("div");
+            botDiv.className = "msg-bubble bot";
+            // Convert markdown to HTML instantly
+            botDiv.innerHTML = marked.parse(d.response);
+            box.appendChild(botDiv);
+            box.scrollTop = box.scrollHeight; // Scroll to bottom
+        })
+        .catch(err => {
+            document.getElementById(loadingId).innerHTML = "⚠️ <em>Sorry, there was an error connecting to the doctor.</em>";
+        });
+
+        msgInput.value = "";
+    }
+</script>
+
+</body>
+</html>
