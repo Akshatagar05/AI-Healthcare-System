@@ -37,3 +37,4 @@ datasets/
 # Build files
 dist/
 build/
+insert_data.py
