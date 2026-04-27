@@ -1,27 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - AI MedAssistant</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Register — MedAssist AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* Prevent iOS zoom on input focus */
+    .field-group input { font-size: 16px; }
+
+    /* Safe-area padding for notched phones */
+    .auth-wrapper {
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+      padding-top:    max(24px, env(safe-area-inset-top));
+    }
+
+    @media (max-width: 480px) {
+      .auth-card { padding: 28px 20px; }
+      .auth-card h2 { font-size: 1.55rem; }
+    }
+  </style>
 </head>
 <body>
+  <div class="bg-ambient"></div>
 
-<div class="auth-wrapper">
+  <div class="auth-wrapper">
     <div class="auth-card">
-        <h2>📋 Patient Registration</h2>
-        <p style="color: var(--text-light); margin-bottom: 20px;">Create a secure account to track your health</p>
-        
-        <form method="POST">
-            <input name="username" placeholder="Choose a Username" required autocomplete="off">
-            <input type="password" name="password" placeholder="Create Password" required>
-            <button class="btn-main" style="margin-top: 15px;">Create Account ✨</button>
-        </form>
-        
-        <a href="/login" class="auth-links">Already have an account? <strong>Login</strong></a>
-    </div>
-</div>
+      <div class="auth-logo">
+        <div class="auth-logo-icon">⚕️</div>
+        <span class="auth-logo-text">MedAssist AI</span>
+      </div>
 
+      <h2>Create account</h2>
+      <p>Start tracking your health journey today</p>
+
+      {% if error %}
+      <div class="auth-error">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST" autocomplete="off">
+        <div class="field-group">
+          <label for="username">Username</label>
+          <input
+            id="username"
+            name="username"
+            placeholder="Choose a username"
+            required
+            autocomplete="username"
+            autocorrect="off"
+            autocapitalize="none"
+            spellcheck="false"
+            inputmode="text"
+            enterkeyhint="next"
+          >
+        </div>
+        <div class="field-group">
+          <label for="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            name="password"
+            placeholder="Create a password"
+            required
+            autocomplete="new-password"
+            enterkeyhint="next"
+          >
+        </div>
+        <div class="field-group">
+          <label for="city">City</label>
+          <input
+            id="city"
+            name="city"
+            placeholder="e.g. Dehradun"
+            required
+            autocomplete="address-level2"
+            autocorrect="off"
+            autocapitalize="words"
+            inputmode="text"
+            enterkeyhint="go"
+          >
+        </div>
+        <button type="submit" class="btn-primary">Create account →</button>
+      </form>
+
+      <div class="auth-footer">
+        Already have an account? <a href="/login">Sign in</a>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

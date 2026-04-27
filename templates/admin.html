@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Admin — MedAssist AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Safe-area padding */
+    .admin-layout {
+      padding-bottom: max(32px, env(safe-area-inset-bottom));
+      padding-top:    max(16px, env(safe-area-inset-top));
+    }
+
+    /* Table: scroll horizontally instead of breaking layout */
+    .table-scroll-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: var(--radius-md);
+    }
+
+    /* Ensure table doesn't shrink below readable width */
+    .table-scroll-wrapper .data-table { min-width: 480px; }
+
+    @media (max-width: 600px) {
+      .admin-layout { padding-left: 12px; padding-right: 12px; }
+      .admin-header { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 20px; }
+      .admin-header-left h2 { font-size: 1.45rem; }
+      .admin-header-left p  { font-size: 0.8rem; }
+
+      /* 2-column stat grid on phones */
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .stat-card  { padding: 16px 14px; }
+      .stat-value { font-size: 1.9rem; }
+      .stat-icon  { width: 34px; height: 34px; font-size: 15px; margin-bottom: 10px; }
+      .stat-label { font-size: 0.7rem; }
+
+      /* Charts stack to single column */
+      .charts-grid { grid-template-columns: 1fr; gap: 12px; }
+      .chart-card  { padding: 14px; }
+      .chart-card h3 { font-size: 0.9rem; }
+
+      .card { padding: 14px; }
+      .card h3 { font-size: 0.9rem; }
+      .data-table thead th { font-size: 0.7rem; padding: 8px; }
+      .data-table tbody td { font-size: 0.8rem;  padding: 9px 8px; }
+      .badge { font-size: 0.68rem; padding: 2px 8px; }
+      .btn-outline { padding: 8px 14px; font-size: 0.83rem; }
+    }
+
+    @media (max-width: 360px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .stat-value { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-ambient"></div>
+
+  <div class="admin-layout">
+
+    <!-- Header -->
+    <div class="admin-header">
+      <div class="admin-header-left">
+        <h2>System Dashboard</h2>
+        <p>Administrative overview — MedAssist AI</p>
+      </div>
+      <a href="/logout" class="btn-outline">→ Logout</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value">{{ total_users }}</div>
+        <div class="stat-label">Registered Patients</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💬</div>
+        <div class="stat-value">{{ total_chats }}</div>
+        <div class="stat-label">Total Consultations</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🦠</div>
+        <div class="stat-value">{{ disease_labels | length }}</div>
+        <div class="stat-label">Unique Conditions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📍</div>
+        <div class="stat-value">{{ location_labels | length }}</div>
+        <div class="stat-label">Cities Covered</div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>🦠 Top Conditions Detected</h3>
+        <!-- No fixed height attribute — Chart.js will size responsively -->
+        <canvas id="diseaseChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>📍 Patient Locations</h3>
+        <canvas id="locationChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Recent consultations -->
+    <div class="card">
+      <h3>📋 Recent Consultations</h3>
+      <!-- Wrapper makes the table scroll on small screens -->
+      <div class="table-scroll-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Condition</th>
+              <th>City</th>
+              <th>Date &amp; Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in patients %}
+            <tr>
+              <td style="color: var(--text-1); font-weight: 500;">{{ p[0] }}</td>
+              <td><span class="badge">{{ p[1] }}</span></td>
+              <td>{{ p[2] }}</td>
+              <td style="font-size: 0.8rem; color: var(--text-3); white-space: nowrap;">{{ p[3] }}</td>
+            </tr>
+            {% endfor %}
+            {% if not patients %}
+            <tr>
+              <td colspan="4" style="text-align: center; color: var(--text-3); padding: 30px;">No consultations recorded yet.</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div><!-- /table-scroll-wrapper -->
+    </div>
+
+  </div><!-- /admin-layout -->
+
+  <script>
+    Chart.defaults.color       = '#4a6660';
+    Chart.defaults.borderColor = 'rgba(0,229,160,0.08)';
+
+    const diseaseLabels  = {{ disease_labels  | tojson }};
+    const diseaseCounts  = {{ disease_counts  | tojson }};
+    const locationLabels = {{ location_labels | tojson }};
+    const locationCounts = {{ location_counts | tojson }};
+
+    // Detect small screen for chart tweaks
+    const isMobile = window.innerWidth <= 600;
+
+    new Chart(document.getElementById('diseaseChart'), {
+      type: 'bar',
+      data: {
+        labels: diseaseLabels,
+        datasets: [{
+          label: 'Cases',
+          data: diseaseCounts,
+          backgroundColor: 'rgba(0, 229, 160, 0.2)',
+          borderColor: '#00e5a0',
+          borderWidth: 1,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 } },
+          x: {
+            ticks: {
+              maxRotation: isMobile ? 45 : 30,
+              font: { size: isMobile ? 10 : 12 }
+            }
+          }
+        }
+      }
+    });
+
+    new Chart(document.getElementById('locationChart'), {
+      type: 'doughnut',
+      data: {
+        labels: locationLabels,
+        datasets: [{
+          data: locationCounts,
+          backgroundColor: ['#00e5a0','#00c3f5','#6366f1','#f59e0b','#ef4444','#10b981','#8b5cf6','#ec4899'],
+          borderWidth: 0,
+          hoverOffset: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '60%',
+        plugins: {
+          legend: {
+            position: isMobile ? 'bottom' : 'bottom',
+            labels: {
+              padding: isMobile ? 10 : 14,
+              font: { size: isMobile ? 10 : 12 }
+            }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

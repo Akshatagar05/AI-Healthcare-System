@@ -1,43 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical History</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Medical History — MedAssist AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* Safe-area padding so content isn't hidden behind notch / home bar */
+    .dash-layout {
+      padding-bottom: max(32px, env(safe-area-inset-bottom));
+      padding-top:    max(16px, env(safe-area-inset-top));
+    }
+
+    /* Prevent markdown content from causing horizontal overflow on small screens */
+    .history-bot {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      word-break: break-word;
+    }
+
+    /* Markdown tables inside history cards scroll horizontally */
+    .history-bot table {
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      white-space: nowrap;
+      width: 100%;
+    }
+
+    /* Make pre/code blocks scroll instead of breaking layout */
+    .history-bot pre {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 480px) {
+      .dash-layout { padding-left: 12px; padding-right: 12px; }
+      .dash-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .dash-header h2 { font-size: 1.45rem; }
+      .history-card { padding: 16px; }
+      .history-user { font-size: 0.88rem; }
+      .history-bot  { font-size: 0.85rem; line-height: 1.6; }
+      .history-time { font-size: 0.72rem; }
+      .btn-outline   { padding: 8px 14px; font-size: 0.83rem; }
+    }
+  </style>
 </head>
 <body>
+  <div class="bg-ambient"></div>
 
-<div class="dash-container">
+  <div class="dash-layout">
     <div class="dash-header">
-        <h2 style="color: var(--primary-dark);">📜 Your Medical History</h2>
-        <a href="/" class="btn-main" style="text-decoration:none; width:auto; display:inline-block;">⬅ Back to Chat</a>
+      <h2><span>Medical</span> History</h2>
+      <a href="/chat" class="btn-outline">← Back to Chat</a>
     </div>
 
-    {% for msg, res, time in data %}
-    <div class="history-card">
+    {% if data %}
+      {% for disease, res, time in data %}
+      <div class="history-card">
         <div class="history-time">🕒 {{ time }}</div>
-        <div class="history-user">🗣️ Symptoms: {{ msg }}</div>
-        <div class="history-bot markdown-content" data-md="{{ res | e }}">
-            </div>
-    </div>
-    {% endfor %}
-
-    {% if not data %}
-    <div class="history-card" style="text-align: center; color: var(--text-light);">
-        No history found. Start chatting to build your medical record!
-    </div>
+        <div class="history-user">🦠 {{ disease }}</div>
+        <div class="history-bot markdown-content" data-md="{{ res | e }}"></div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="history-empty">
+        <p>No history yet. Start a conversation to build your medical record.</p>
+      </div>
     {% endif %}
-</div>
+  </div>
 
-<script>
-    // Parse markdown for all history cards on load
+  <script>
+    marked.setOptions({ breaks: true });
     document.querySelectorAll('.markdown-content').forEach(el => {
-        let rawText = el.getAttribute('data-md');
-        el.innerHTML = marked.parse(rawText);
+      el.innerHTML = marked.parse(el.getAttribute('data-md') || '');
     });
-</script>
-
+  </script>
 </body>
 </html>

@@ -1,96 +1,353 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Medical Assistant</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>MedAssist AI — Chat</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* ── Mobile-specific overrides ────────────────────────────────── */
+
+    /* Fix: on mobile, 100vh includes the browser chrome, use dvh instead */
+    .chat-layout {
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    /* Input area sticks to bottom with notch/home-bar padding */
+    .chat-input-area {
+      padding-bottom: max(20px, env(safe-area-inset-bottom));
+    }
+
+    /* Prevent pull-to-refresh interfering with chat scroll */
+    body { overscroll-behavior: none; }
+    .chat-messages { overscroll-behavior: contain; }
+
+    /* ── Mobile tweaks (≤ 600px) ─────────────────────────────────── */
+    @media (max-width: 600px) {
+
+      .chat-layout { padding: 0 10px; }
+
+      /* Header */
+      .chat-header { padding: 10px 0; gap: 6px; flex-wrap: nowrap; }
+      .header-logo-mark { width: 30px; height: 30px; font-size: 14px; flex-shrink: 0; }
+      .header-title { font-size: 0.95rem; }
+      .header-subtitle { display: none; }        /* hide "Clinical Intelligence" */
+      .chat-header-right { gap: 5px; flex-shrink: 0; }
+
+      /* Collapse nav button text — icon only */
+      .header-btn { padding: 7px 9px; gap: 0; }
+      .header-btn span:last-child { display: none; }
+
+      /* Language selector */
+      .header-select { padding: 6px 7px; font-size: 0.8rem; max-width: 56px; }
+
+      /* Messages */
+      .chat-messages { padding: 12px 0; gap: 10px; }
+      .msg { max-width: 92%; }
+      .msg-bubble { padding: 11px 13px; font-size: 0.875rem; line-height: 1.6; }
+      .msg-bot .msg-bubble h1,
+      .msg-bot .msg-bubble h2,
+      .msg-bot .msg-bubble h3 { font-size: 0.88rem; margin-top: 12px; }
+
+      /* Follow-up chips */
+      .chips-row { gap: 6px; }
+      .chip { font-size: 0.77rem; padding: 5px 11px; white-space: normal; text-align: left; }
+
+      /* Quick-action buttons */
+      .chat-input-area { padding-top: 10px; }
+      .quick-actions { gap: 6px; padding-bottom: 9px; }
+      .quick-btn { padding: 6px 10px; font-size: 0.76rem; gap: 3px; }
+
+      /* Input row */
+      .input-row { gap: 6px; }
+      .mic-btn { width: 40px; height: 40px; font-size: 1rem; flex-shrink: 0; }
+      /* Prevent iOS zoom on focus (needs 16px) */
+      .text-input { font-size: 16px; padding: 10px 14px; }
+      .send-btn { height: 40px; padding: 0 14px; font-size: 0.85rem; }
+    }
+
+    /* ── Extra-small (≤ 360px) ───────────────────────────────────── */
+    @media (max-width: 360px) {
+      .header-btn { display: none; }   /* hide History/Logout — use menu instead */
+      .mob-menu-btn { display: flex; } /* show hamburger */
+      .send-btn { padding: 0 11px; }
+      .quick-btn { font-size: 0.72rem; padding: 5px 8px; }
+    }
+  </style>
 </head>
 <body>
+  <div class="bg-ambient"></div>
 
-<div class="container">
-    <div class="header">
-        <h2>⚕️ AI MedAssistant</h2>
+  <div class="chat-layout">
+
+    <!-- ══════════════════ HEADER ══════════════════ -->
+    <header class="chat-header">
+      <div class="chat-header-left">
+        <div class="header-logo-mark">⚕️</div>
         <div>
-            <a href="/dashboard">📜 History</a>
-            <a href="/logout">🚪 Logout</a>
+          <div class="header-title">MedAssist AI</div>
+          <div class="header-subtitle">Clinical Intelligence</div>
         </div>
+      </div>
+
+      <div class="chat-header-right">
+        <select id="langSelect" class="header-select" title="Language" aria-label="Select language">
+          <option value="en-US">EN</option>
+          <option value="hi-IN">हिंदी</option>
+          <option value="mr-IN">मराठी</option>
+          <option value="te-IN">తెలుగు</option>
+          <option value="bn-IN">বাংলা</option>
+          <option value="or-IN">ଓଡ଼ିଆ</option>
+        </select>
+        <a href="/dashboard" class="header-btn" aria-label="History">
+          <span>📜</span><span>History</span>
+        </a>
+        <a href="/logout" class="header-btn" aria-label="Logout">
+          <span>→</span><span>Logout</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- ══════════════════ MESSAGES ══════════════════ -->
+    <div id="chatMessages" class="chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
+      <div class="msg msg-bot">
+        <div class="msg-bubble">
+          Hello, <strong>{{ username }}</strong>. I'm your AI Medical Assistant — here to help you understand your symptoms, suggest care options, and find nearby hospitals.<br><br>
+          <em style="color: var(--text-3); font-size: 0.82rem;">⚠️ This is an AI assistant, not a substitute for professional medical advice.</em>
+        </div>
+      </div>
     </div>
 
-    <div id="chatBox" class="chat-box">
-        <div class="msg-bubble bot">
-            👋 Hello <strong>{{ username }}</strong>! I am your AI Medical Assistant. Please describe your symptoms, or use the quick buttons below.
-        </div>
+    <!-- ══════════════════ INPUT AREA ══════════════════ -->
+    <div class="chat-input-area">
+
+      <!-- Quick-action pills (horizontally scrollable) -->
+      <div class="quick-actions" role="toolbar" aria-label="Quick symptom shortcuts">
+        <button class="quick-btn hospitals" onclick="requestHospitals()" aria-label="Find nearby hospitals">📍 Hospitals</button>
+        <button class="quick-btn" onclick="quickFill('I have a fever and chills')">🤒 Fever</button>
+        <button class="quick-btn" onclick="quickFill('I have a severe headache')">🤕 Headache</button>
+        <button class="quick-btn" onclick="quickFill('I feel nauseous and have stomach pain')">🤢 Nausea</button>
+        <button class="quick-btn" onclick="quickFill('I have a persistent cough')">😮‍💨 Cough</button>
+        <button class="quick-btn" onclick="quickFill('I feel very tired and fatigued')">😴 Fatigue</button>
+      </div>
+
+      <!-- Text + mic + send -->
+      <div class="input-row">
+        <button id="micBtn" class="mic-btn" onclick="startVoice()" title="Voice input" aria-label="Start voice input">🎙️</button>
+        <input
+          id="msgInput"
+          class="text-input"
+          placeholder="Describe your symptoms…"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="true"
+          enterkeyhint="send"
+          onkeypress="handleEnter(event)"
+          aria-label="Type your symptoms"
+        >
+        <button class="send-btn" onclick="send()" aria-label="Send message">Send ↗</button>
+      </div>
     </div>
 
-    <div class="input-area">
-        <div class="fab-container">
-            <button class="fab-btn" onclick="quickFill('🤒 Fever and chills')">🤒 Fever</button>
-            <button class="fab-btn" onclick="quickFill('🤕 Severe headache and light sensitivity')">🤕 Headache</button>
-            <button class="fab-btn" onclick="quickFill('🤢 Nausea and upset stomach')">🤢 Nausea</button>
-            <button class="fab-btn" onclick="quickFill('🤧 Runny nose and sneezing')">🤧 Allergies</button>
-        </div>
-        
-        <div class="input-wrapper">
-            <input id="msg" placeholder="Type your symptoms here..." onkeypress="handleEnter(event)">
-            <button onclick="send()">Send 🚀</button>
-        </div>
-    </div>
-</div>
+  </div><!-- /chat-layout -->
 
-<script>
+  <script>
+    /* ─────────────────────────────────────────────
+       DOM refs
+    ───────────────────────────────────────────── */
+    const msgInput   = document.getElementById('msgInput');
+    const micBtn     = document.getElementById('micBtn');
+    const langSelect = document.getElementById('langSelect');
+    const chatBox    = document.getElementById('chatMessages');
+    let isProcessing = false;
+
+    marked.setOptions({ breaks: true });
+
+    /* ─────────────────────────────────────────────
+       Mobile keyboard: keep input visible
+       When the virtual keyboard opens, scroll the
+       last message into view so it doesn't hide
+       behind the keyboard.
+    ───────────────────────────────────────────── */
+    if ('visualViewport' in window) {
+      window.visualViewport.addEventListener('resize', () => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+    }
+
+    /* ─────────────────────────────────────────────
+       GPS / Hospitals
+    ───────────────────────────────────────────── */
+    function requestHospitals() {
+      if (isProcessing) return;
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+      }
+      msgInput.placeholder = 'Getting your location… 📍';
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          msgInput.placeholder = 'Describe your symptoms…';
+          send('Show me nearby hospitals', pos.coords.latitude, pos.coords.longitude);
+        },
+        err => {
+          msgInput.placeholder = 'Describe your symptoms…';
+          const msg = err.code === 1
+            ? "Location access denied. Please allow it in your browser settings."
+            : "Could not get your location. Please try again.";
+          alert(msg);
+        },
+        { timeout: 10000, maximumAge: 60000 }
+      );
+    }
+
+    /* ─────────────────────────────────────────────
+       Voice input
+    ───────────────────────────────────────────── */
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous    = false;
+      recognition.interimResults = false;
+
+      recognition.onstart  = () => {
+        micBtn.classList.add('recording');
+        msgInput.placeholder = 'Listening…';
+      };
+      recognition.onend    = () => {
+        micBtn.classList.remove('recording');
+        msgInput.placeholder = 'Describe your symptoms…';
+      };
+      recognition.onerror  = () => {
+        micBtn.classList.remove('recording');
+        msgInput.placeholder = 'Describe your symptoms…';
+      };
+      recognition.onresult = e => {
+        msgInput.value = e.results[0][0].transcript;
+        send();
+      };
+    } else {
+      micBtn.style.display = 'none'; // hide if not supported (most desktop non-Chrome)
+    }
+
+    function startVoice() {
+      if (recognition && !isProcessing) {
+        recognition.lang = langSelect.value;
+        try { recognition.start(); } catch (_) {}
+      }
+    }
+
+    /* ─────────────────────────────────────────────
+       Chat helpers
+    ───────────────────────────────────────────── */
     function quickFill(text) {
-        document.getElementById("msg").value = text;
-        document.getElementById("msg").focus();
+      if (isProcessing) return;
+      msgInput.value = text;
+      msgInput.focus();
     }
 
     function handleEnter(e) {
-        if (e.key === 'Enter') {
-            send();
-        }
+      if (e.key === 'Enter') {
+        e.preventDefault(); // prevent form submit / newline on mobile
+        send();
+      }
     }
 
-    function send() {
-        let msgInput = document.getElementById("msg");
-        let msg = msgInput.value.trim();
-        if (!msg) return;
-
-        let box = document.getElementById("chatBox");
-
-        // Add user message
-        box.innerHTML += `<div class="msg-bubble user">${msg}</div>`;
-        
-        // Add loading indicator
-        let loadingId = 'loading-' + Date.now();
-        box.innerHTML += `<div id="${loadingId}" class="msg-bubble bot"><em>Thinking... 🩺</em></div>`;
-        box.scrollTop = box.scrollHeight; // Scroll to bottom
-
-        fetch("/chat", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({message: msg})
-        })
-        .then(r => r.json())
-        .then(d => {
-            // Remove loading indicator
-            document.getElementById(loadingId).remove();
-
-            // Create bot response with Markdown parsed
-            let botDiv = document.createElement("div");
-            botDiv.className = "msg-bubble bot";
-            // Convert markdown to HTML instantly
-            botDiv.innerHTML = marked.parse(d.response);
-            box.appendChild(botDiv);
-            box.scrollTop = box.scrollHeight; // Scroll to bottom
-        })
-        .catch(err => {
-            document.getElementById(loadingId).innerHTML = "⚠️ <em>Sorry, there was an error connecting to the doctor.</em>";
-        });
-
-        msgInput.value = "";
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
     }
-</script>
 
+    function scrollToBottom() {
+      chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+    }
+
+    function appendMsg(html, role) {
+      const wrap   = document.createElement('div');
+      wrap.className = `msg msg-${role}`;
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+      bubble.innerHTML  = html;
+      wrap.appendChild(bubble);
+      chatBox.appendChild(wrap);
+      scrollToBottom();
+      return wrap;
+    }
+
+    function addChips(followUps) {
+      if (!followUps || !followUps.length) return;
+      const row = document.createElement('div');
+      row.className = 'chips-row';
+      followUps.forEach(fu => {
+        const chip = document.createElement('button');
+        chip.className   = 'chip';
+        chip.textContent = fu;
+        chip.setAttribute('aria-label', `Follow up: ${fu}`);
+        chip.onclick = () => { msgInput.value = fu; send(); };
+        row.appendChild(chip);
+      });
+      chatBox.appendChild(row);
+      scrollToBottom();
+    }
+
+    /* ─────────────────────────────────────────────
+       Main send function
+    ───────────────────────────────────────────── */
+    function send(overrideMsg = null, lat = null, lon = null) {
+      if (isProcessing) return;
+
+      const text = overrideMsg || msgInput.value.trim();
+      if (!text) return;
+
+      isProcessing      = true;
+      micBtn.disabled   = true;
+
+      appendMsg(overrideMsg ? `${text} 📍` : escapeHtml(text), 'user');
+      msgInput.value = '';
+      msgInput.blur(); // close keyboard after send on mobile
+
+      const loadingEl = appendMsg(
+        `<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>`,
+        'bot'
+      );
+
+      const payload = { message: text, lang: langSelect.value };
+      if (lat !== null && lon !== null) { payload.lat = lat; payload.lon = lon; }
+
+      fetch('/chat', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+      })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(data => {
+        loadingEl.remove();
+        appendMsg(marked.parse(data.response || ''), 'bot');
+        if (data.follow_ups && data.follow_ups.length) addChips(data.follow_ups);
+      })
+      .catch(err => {
+        console.error('Chat error:', err);
+        const bubble = loadingEl.querySelector('.msg-bubble');
+        if (bubble) bubble.innerHTML = '⚠️ <em>Connection error. Please try again.</em>';
+      })
+      .finally(() => {
+        isProcessing    = false;
+        micBtn.disabled = false;
+        scrollToBottom();
+      });
+    }
+  </script>
 </body>
 </html>
